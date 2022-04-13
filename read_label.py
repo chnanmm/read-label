@@ -4,7 +4,6 @@ import numpy as np
 import cv2
 from PIL import Image
 import requests
-import json
 import os
 
 ENDPOINT_URL = 'https://api.eikonnex.ai/api/readme'
