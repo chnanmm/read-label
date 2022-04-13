@@ -1,0 +1,3 @@
+Pillow                # PIL
+opencv-python         # cv2
+streamlit
