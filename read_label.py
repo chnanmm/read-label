@@ -5,6 +5,7 @@ import cv2
 from PIL import Image
 import requests
 import os
+from difflib import SequenceMatcher
 
 ENDPOINT_URL = 'https://api.eikonnex.ai/api/readme'
 API_KEY = 'csGjUIWS2K6TnlKHMtVW7al0hgaZuJUbhwxgFfr91liDjObxLtNoM2jTONeblNIp6LUcjiaCH9MqEL-c0nv_OQ'
@@ -93,41 +94,46 @@ def get_recognitionResult(INPUT_FILENAME):
 
   return recognitionResults, outputImage
 
+def similar(a, b):
+    return SequenceMatcher(None, a, b).ratio()
+
 def get_df(recognitionResults):
-  details = ['หนึ่งหน่วยบริโภค', 'จำนวนหน่วยบริโภคต่อ', 'พลังงานท', 'ไขมันท',
-            'โคเลสเตอรอล', 'โปร', 'โบไฮเ', 'โซเดียม']
+  details = ['หนึ่งหน่วยบริโภค', 'จำนวนหน่วยบริโภคต่อ', 'พลังงานทั้งหมด', 'ไขมันทั้งหมด',
+            'โคเลสเตอรอล', 'โปรตีน', 'คาร์โบไฮเดรต', 'โซเดียม']
+  keys = ['หนึ่งหน่วยบริโภค', 'จำนวนหน่วยบริโภค', 'พลังงานทั้งหมด', 'ไขมันทั้งหมด',
+            'โคเลสเตอรอล', 'โปรตีน', 'คาร์โบไฮเดรต', 'โซเดียม']
   added_details = []
   label_dict = {}
   recognitionTexts = recognitionResults['results'][0]
   for i, recognitionResult in enumerate(recognitionTexts):
     recognizedStr = recognitionResult['text']
-    for detail in details:
-      if 'โภชนาการต่อหนึ่งหน่วยบริโภค' not in recognizedStr:
-        if (detail in recognizedStr) and (detail not in added_details):
-          splitStr = recognizedStr.split()
-          if len(splitStr) == 1:
-            if '%' not in recognitionTexts[i+1]['text']:
-              label_dict[recognizedStr] = [recognitionTexts[i+1]['text'].replace('n','ก')]
-              added_details.append(detail)
-            else: 
-              label_dict[recognizedStr] = [recognitionTexts[i+2]['text'].replace('n','ก')]
-              added_details.append(detail)
-
-          elif len(splitStr) >= 1:
-            in_split = False
-            for e in recognizedStr[len(splitStr[0]):]:
-              if e.isdigit():
-                label_dict[splitStr[0]] = [recognizedStr[len(splitStr[0]):]]
-                added_details.append(detail)
-                in_split = True
-                break
-            if not in_split:
+    for detail_idx, detail in enumerate(details):
+        splitStrs = recognizedStr.split()
+        for splitStr in splitStrs:
+          if (similar(detail,splitStr)>0.7) and (detail not in added_details):
+            if len(splitStrs) == 1:
               if '%' not in recognitionTexts[i+1]['text']:
-                label_dict[recognizedStr] = [recognitionTexts[i+1]['text'].replace('n','ก')]
+                label_dict[keys[detail_idx]] = [recognitionTexts[i+1]['text'].replace('n.','ก.').replace(':','')]
                 added_details.append(detail)
               else: 
-                label_dict[recognizedStr] = [recognitionTexts[i+2]['text'].replace('n','ก')]
+                label_dict[keys[detail_idx]] = [recognitionTexts[i+2]['text'].replace('n.','ก.').replace(':','')]
                 added_details.append(detail)
+
+            elif len(splitStrs) >= 1:
+              in_split = False
+              for e in recognizedStr[len(splitStrs[0]):]:
+                if e.isdigit():
+                  label_dict[keys[detail_idx]] = [recognizedStr[len(splitStrs[0]):].replace('n.','ก.').replace(':','')]
+                  added_details.append(detail)
+                  in_split = True
+                  break
+              if not in_split:
+                if '%' not in recognitionTexts[i+1]['text']:
+                  label_dict[keys[detail_idx]] = [recognitionTexts[i+1]['text'].replace('n.','ก.').replace(':','')]
+                  added_details.append(detail)
+                else: 
+                  label_dict[keys[detail_idx]] = [recognitionTexts[i+2]['text'].replace('n.','ก.').replace(':','')]
+                  added_details.append(detail)
 
   # print(label_dict)
   df = pd.DataFrame(label_dict).T
