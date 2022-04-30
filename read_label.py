@@ -76,6 +76,7 @@ def get_food_label(img_bgr):
                         [max_width - 1, 0]])
   M = cv2.getPerspectiveTransform(input_pts,output_pts)
   out = cv2.warpPerspective(img_bgr,M,(max_width, max_height),flags=cv2.INTER_LINEAR)
+  out = cv2.fastNlMeansDenoisingColored(out,None,15,15,7,21)
 
   return out
 
